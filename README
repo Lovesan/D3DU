@@ -1,0 +1,3 @@
+D3DU(`Direct3D Utils') is a simple wrapper library for modern Direct3D.
+
+Library exposes lightweight COM interface. See `D3DU.h' for details.
