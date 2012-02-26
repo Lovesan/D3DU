@@ -8,6 +8,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Triangle", "Triangle\Triang
 		{6B2B2DFE-F7E5-4182-A688-32D0F82FB320} = {6B2B2DFE-F7E5-4182-A688-32D0F82FB320}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MandelbrotCube", "MandelbrotCube\MandelbrotCube.vcxproj", "{E74E6A6A-8C46-453E-92C9-51E93264F157}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6B2B2DFE-F7E5-4182-A688-32D0F82FB320} = {6B2B2DFE-F7E5-4182-A688-32D0F82FB320}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -22,6 +27,10 @@ Global
 		{458CD0B4-D7FF-4271-BD05-1EC85D92E075}.Debug|Win32.Build.0 = Debug|Win32
 		{458CD0B4-D7FF-4271-BD05-1EC85D92E075}.Release|Win32.ActiveCfg = Release|Win32
 		{458CD0B4-D7FF-4271-BD05-1EC85D92E075}.Release|Win32.Build.0 = Release|Win32
+		{E74E6A6A-8C46-453E-92C9-51E93264F157}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E74E6A6A-8C46-453E-92C9-51E93264F157}.Debug|Win32.Build.0 = Debug|Win32
+		{E74E6A6A-8C46-453E-92C9-51E93264F157}.Release|Win32.ActiveCfg = Release|Win32
+		{E74E6A6A-8C46-453E-92C9-51E93264F157}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

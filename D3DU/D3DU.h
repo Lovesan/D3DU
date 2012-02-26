@@ -29,6 +29,7 @@
 
 #include <windows.h>
 #include <d3d11.h>
+#include <d3dcompiler.h>
 
 #if defined(DEBUG) || defined(_DEBUG)
 #define D3DU_DEBUG
@@ -42,6 +43,7 @@
 #endif
 #define D3DU_API __stdcall
 
+typedef interface ID3DUFloatAnimation ID3DUFloatAnimation;
 typedef interface ID3DUTarget ID3DUTarget;
 typedef interface ID3DUWindowTarget ID3DUWindowTarget;
 typedef interface ID3DUSink ID3DUSink;
@@ -49,7 +51,16 @@ typedef interface ID3DUFrameSink ID3DUFrameSink;
 typedef interface ID3DUKeySink ID3DUKeySink;
 typedef interface ID3DUMouseSink ID3DUMouseSink;
 
-/// Well, function name and args are self-explanatory.
+/// Well, function and argument names are self-explanatory.
+
+D3DU_EXTERN HRESULT D3DU_API D3DUCreateFloatAnimation(
+  FLOAT begin,
+  FLOAT end,
+  FLOAT interval,
+  BOOL repeat,
+  BOOL autoReverse,
+  /* [out] */ ID3DUFloatAnimation **oFloatAnimation);
+
 D3DU_EXTERN HRESULT D3DU_API D3DUCreateWindowTarget(
   UINT x,
   UINT y,
@@ -60,6 +71,48 @@ D3DU_EXTERN HRESULT D3DU_API D3DUCreateWindowTarget(
   BOOL acceptSoftwareDriver,
   /* [out] */ ID3DUWindowTarget **oTarget);
 
+D3DU_EXTERN HRESULT D3DU_API D3DUCompileFromMemory(
+  LPCSTR code,
+  SIZE_T size,
+  LPCSTR entry,  
+  LPCSTR target,
+  DWORD shaderFlags,
+  /* [out] */ ID3DBlob **oCodeBlob);
+
+D3DU_EXTERN HRESULT D3DU_API D3DUCompileFromResource(
+  HMODULE module,  
+  LPCWSTR resourceName,
+  LPCWSTR resourceType,
+  LPCSTR entry,  
+  LPCSTR target,
+  DWORD shaderFlags,
+  /* [out] */ ID3DBlob **oCodeBlob);
+
+D3DU_EXTERN HRESULT D3DU_API D3DUCompileFromFile(
+  LPCWSTR filename,
+  LPCSTR entry,  
+  LPCSTR target,
+  DWORD shaderFlags,
+  /* [out] */ ID3DBlob **oCodeBlob);
+
+// Animation
+MIDL_INTERFACE("9D1DA4B4-1DDE-479C-BE3C-A652CAA71540")
+ID3DUFloatAnimation : public IUnknown
+{
+public:
+  STDMETHOD(Start)() = 0;
+  STDMETHOD(Stop)() = 0;
+  STDMETHOD(GetStatus)(/* [out] */ BOOL *oStarted)= 0;
+  STDMETHOD(Query)(/* [out] */ FLOAT *oCurrent) = 0;
+  STDMETHOD(GetRange)(/* [out] */ FLOAT *oBegin, /* [out] */ FLOAT *oEnd) = 0;
+  STDMETHOD(SetRange)(FLOAT begin, FLOAT end) = 0;
+  STDMETHOD(GetInterval)(/* [out] */ FLOAT *oSeconds) = 0;
+  STDMETHOD(SetInterval)(FLOAT seconds) = 0;
+  STDMETHOD(GetRepeat)(/* [out] */ BOOL *oRepeat) = 0;
+  STDMETHOD(SetRepeat)(BOOL repeat) = 0;
+  STDMETHOD(GetAutoReverse)(/* [out] */ BOOL *oAutoReverse) = 0;
+  STDMETHOD(SetAutoReverse)(BOOL autoReverse) = 0;
+};
 
 /// Generic renderer interface.
 MIDL_INTERFACE("A368DF08-C45B-4FA2-9188-EA5482BF5DC1")
@@ -67,6 +120,8 @@ ID3DUTarget : public IUnknown
 {
 public:  
   STDMETHOD(Render)() = 0;
+  STDMETHOD(GetSize)(UINT *oWidth, UINT *oHeight) = 0;
+  STDMETHOD(SetSize)(UINT width, UINT height) = 0;
   STDMETHOD(GetFrameSink)(/* [out] */ ID3DUFrameSink **oSink) = 0;
   STDMETHOD(SetFrameSink)(ID3DUFrameSink *sink) = 0;
   STDMETHOD(GetDevice)(/* [out] */ ID3D11Device **oDevice) = 0;

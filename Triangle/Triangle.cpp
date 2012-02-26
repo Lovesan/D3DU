@@ -33,7 +33,7 @@ const CHAR shaders[] =
   "float4 PS(float4 pos : SV_POSITION) : SV_TARGET { return float4(1, 1, 0, 1); } \n";
 
 class D3DU_NOVTABLE CTriangle :
-  public ID3DUFrameSink
+  public virtual ID3DUFrameSink
 {
 public:
 
@@ -55,7 +55,6 @@ public:
     ComPtr<ID3D11PixelShader> ps;
     ComPtr<ID3D11InputLayout> il;
     ComPtr<ID3DBlob> blob;
-    ComPtr<ID3DBlob> err;
     XMFLOAT3 vertices[] =
     {
       XMFLOAT3(-0.7f, -0.7f, 0.0f),
@@ -77,26 +76,8 @@ public:
     }
     hr = device->CreateBuffer(&bd, &sd, &vb);
     if(FAILED(hr)) return;
-    hr = D3DCompile(
-      shaders,
-      sizeof(shaders),
-      "Vertex shader",
-      NULL,
-      NULL,
-      "VS",
-      "vs_4_0",
-      0,
-      0,
-      &blob,
-      &err);
-    if(FAILED(hr))
-    {
-#ifdef D3DU_DEBUG
-      if(err)
-        OutputDebugStringA((LPCSTR)err->GetBufferPointer());
-#endif
-      return;
-    }
+    hr = D3DUCompileFromMemory(shaders, sizeof(shaders), "VS", "vs_4_0", 0, &blob);
+    if(FAILED(hr)) return;
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
       { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -105,27 +86,14 @@ public:
     if(FAILED(hr)) return;
     hr = device->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &vs);    
     blob.Release();
-    err.Release();
-    hr = D3DCompile(
+    hr = D3DUCompileFromMemory(
       shaders,
       sizeof(shaders),
-      "Pixel shader",
-      NULL,
-      NULL,
       "PS",
       "ps_4_0",
       0,
-      0,
-      &blob,
-      &err);
-    if(FAILED(hr))
-    {
-#ifdef D3DU_DEBUG
-      if(err)
-        OutputDebugStringA((LPCSTR)err->GetBufferPointer());
-#endif
-      return;
-    }
+      &blob);
+    if(FAILED(hr)) return;
     hr = device->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &ps);
     if(FAILED(hr)) return;
     _vb = vb;
@@ -206,7 +174,7 @@ INT WINAPI wWinMain(
     480,
     NULL,
     D3D_FEATURE_LEVEL_10_0,
-    FALSE,
+    TRUE,
     &target);
   if(FAILED(hr))
   {

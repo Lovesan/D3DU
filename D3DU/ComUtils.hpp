@@ -66,20 +66,20 @@ public:
     return _p;
   }
   inline T* operator=(T* p)
-  {
-    if(_p)
-      _p->Release();
+  {    
     if(p)
       p->AddRef();
+    if(_p)
+      _p->Release();
     _p = p;
     return _p;
   }
   inline T* operator=(ComPtr p)
-  {
-    if(_p)
-      _p->Release();
+  {    
     if(p)
       p->AddRef();
+    if(_p)
+      _p->Release();
     _p = p._p;
     return _p;
   }

@@ -23,6 +23,181 @@
 #include "StdAfx.h"
 #include "D3DU.h"
 
+class D3DU_NOVTABLE CFloatAnimation :
+  public ID3DUFloatAnimation
+{
+public:
+
+  BEGIN_INTERFACE_MAP
+    INTERFACE_MAP_ENTRY(ID3DUFloatAnimation)
+  END_INTERFACE_MAP
+
+  CFloatAnimation()
+  {
+    _started = FALSE;
+    _reverse = FALSE;
+    _repeat = FALSE;
+    _back = FALSE;
+    _begin = 0;
+    _current = 0;
+    _end = 0;
+    _interval = 0;
+    QueryPerformanceFrequency(&_freq);
+  }
+
+  virtual ~CFloatAnimation() { }
+  
+  STDMETHOD(Start)()
+  {
+    if(!_started)
+    {
+      QueryPerformanceCounter(&_counter);
+      _started = TRUE;
+      Query(&_current);
+      return S_OK;
+    }
+    return S_FALSE;
+  }
+
+  STDMETHOD(Stop)()
+  {
+    if(_started)
+    {
+      Query(&_current);
+      _started = FALSE;
+      return S_OK;
+    }
+    return S_FALSE;
+  }
+
+  STDMETHOD(GetStatus)(BOOL *oStarted)
+  {
+    if(!oStarted)
+      return E_POINTER;
+    *oStarted = _started;
+    return S_OK;
+  }
+
+  STDMETHOD(Query)(FLOAT *oCurrent)
+  {
+    if(!oCurrent)
+      return E_POINTER;
+    if(!_started)
+    {
+      *oCurrent = _current;
+      return S_OK;
+    }
+    LARGE_INTEGER tmpCounter;
+    QueryPerformanceCounter(&tmpCounter);
+    FLOAT dt = (tmpCounter.QuadPart - _counter.QuadPart)
+               / (FLOAT)_freq.QuadPart
+               / _interval;
+    _counter = tmpCounter;
+    if(_back)
+    {
+      _current -= dt;
+      if(_current < _begin)
+      {
+        _current = _begin;
+        if(!_repeat)
+          _started = FALSE;
+        if(_reverse)
+          _back = FALSE;
+        else
+          _current = _end;
+      }
+    }
+    else
+    {
+      _current += dt;
+      if(_current > _end)
+      {
+        _current = _end;
+        if(!_repeat)
+          _started = FALSE;
+        if(_reverse)
+          _back = TRUE;
+        else
+          _current = _begin;
+      }
+    }
+    *oCurrent = _current;
+    return S_OK;
+  }
+
+  STDMETHOD(GetRange)(FLOAT *oBegin, FLOAT *oEnd)
+  {
+    if(!oBegin || !oEnd)
+      return E_POINTER;
+    *oBegin = _begin;
+    *oEnd = _end;
+    return S_OK;
+  }
+
+  STDMETHOD(SetRange)(FLOAT begin, FLOAT end)
+  {
+    _begin = begin;
+    _end = end;
+    _back = begin > end;
+    _current = _back ? end : begin;
+    return S_OK;
+  }
+
+  STDMETHOD(GetInterval)(FLOAT *oSeconds)
+  {
+    if(!oSeconds)
+      return E_POINTER;
+    *oSeconds = _interval;
+    return S_OK;
+  }
+
+  STDMETHOD(SetInterval)(FLOAT seconds)
+  {
+    _interval = seconds;
+    return S_OK;
+  }
+
+  STDMETHOD(GetRepeat)(BOOL *oRepeat)
+  {
+    if(!oRepeat)
+      return E_POINTER;
+    *oRepeat = _repeat;
+    return S_OK;
+  }
+
+  STDMETHOD(SetRepeat)(BOOL repeat)
+  {
+    _repeat = repeat;
+    return S_OK;
+  }
+
+  STDMETHOD(GetAutoReverse)(BOOL *oAutoReverse)
+  {
+    if(!oAutoReverse)
+      return E_POINTER;
+    *oAutoReverse = _reverse;
+    return S_OK;
+  }
+
+  STDMETHOD(SetAutoReverse)(BOOL autoReverse)
+  {
+    _reverse = autoReverse;
+    return S_OK;
+  }
+
+private:
+  BOOL _started;
+  BOOL _reverse;
+  BOOL _repeat;
+  BOOL _back;
+  FLOAT _begin;
+  FLOAT _end;
+  FLOAT _current;
+  FLOAT _interval;
+  LARGE_INTEGER _freq;
+  LARGE_INTEGER _counter;
+};
+
 class D3DU_NOVTABLE CWindowTarget :
   public ID3DUWindowTarget
 {
@@ -49,6 +224,10 @@ public:
     hr = InitWindow(x, y, width, height, parent);
     if(FAILED(hr))
       return hr;
+    RECT rc;
+    GetClientRect(_hwnd, &rc);
+    width = rc.right - rc.left;
+    height = rc.bottom - rc.top;
     hr = InitDevice(width, height, fl, acceptSw);
     if(FAILED(hr))
       return hr;
@@ -87,6 +266,46 @@ public:
       if(_frameSink)
         _frameSink->RenderFrame(this);
       _swapChain->Present(0, 0);
+    }
+    return S_OK;
+  }  
+  STDMETHOD(GetSize)(UINT *oWidth, UINT *oHeight)
+  {
+    if(D3DU_WINDOW_CLOSED == _wState)
+    {
+#ifdef D3DU_DEBUG
+      OutputDebugString(L"Window is closed! Unable to obtain size!\n");
+#endif
+      return E_FAIL;
+    }
+    if(!oWidth || !oHeight)
+      return E_POINTER;
+    RECT rc;
+    GetClientRect(_hwnd, &rc);
+    *oWidth = rc.right - rc.left;
+    *oHeight = rc.bottom - rc.top;
+    return S_OK;
+  }
+  STDMETHOD(SetSize)(UINT width, UINT height)
+  {
+    if(D3DU_WINDOW_CLOSED == _wState)
+    {
+#ifdef D3DU_DEBUG
+      OutputDebugString(L"Window is closed! Unable to resize!\n");
+#endif
+      return E_FAIL;
+    }
+    RECT rw;
+    GetWindowRect(_hwnd, &rw);
+    if(!MoveWindow(
+          _hwnd,
+          rw.left,
+          rw.top,
+          width,
+          height,
+          TRUE))
+    {
+      return HRESULT_FROM_WIN32(GetLastError());
     }
     return S_OK;
   }
@@ -301,7 +520,6 @@ private:
       break;
     case WM_PAINT:
       {
-
         target->Render();
       }
       break;
@@ -607,6 +825,25 @@ private:
 
 LPCWSTR CWindowTarget::className = CWindowTarget::InitClass();
 
+D3DU_EXTERN HRESULT D3DU_API D3DUCreateFloatAnimation(
+  FLOAT begin,
+  FLOAT end,
+  FLOAT interval,
+  BOOL repeat,
+  BOOL autoReverse,
+  ID3DUFloatAnimation **oFloatAnimation)
+{
+  if(!oFloatAnimation)
+    return E_POINTER;
+  ComObject<CFloatAnimation> *floatAnimation = new ComObject<CFloatAnimation>();
+  floatAnimation->SetRange(begin, end);
+  floatAnimation->SetInterval(interval);
+  floatAnimation->SetRepeat(repeat);
+  floatAnimation->SetAutoReverse(autoReverse);
+  *oFloatAnimation = floatAnimation;
+  return S_OK;
+}
+
 D3DU_EXTERN HRESULT D3DU_API D3DUCreateWindowTarget(
   UINT x,
   UINT y,
@@ -617,6 +854,8 @@ D3DU_EXTERN HRESULT D3DU_API D3DUCreateWindowTarget(
   BOOL acceptSoftwareDriver,
   ID3DUWindowTarget **oTarget)
 {
+  if(!oTarget)
+    return E_POINTER;
   *oTarget = NULL;
   HRESULT hr;
   ComObject<CWindowTarget> *target = new ComObject<CWindowTarget>();
@@ -628,4 +867,183 @@ D3DU_EXTERN HRESULT D3DU_API D3DUCreateWindowTarget(
   }
   *oTarget = target;
   return S_OK;
+}
+
+D3DU_EXTERN HRESULT D3DU_API D3DUCompileFromMemory(
+  LPCSTR code,
+  SIZE_T size,
+  LPCSTR entry,  
+  LPCSTR target,
+  DWORD shaderFlags,
+  ID3DBlob **oCodeBlob)
+{
+  if(!oCodeBlob)
+    return E_POINTER;
+  HRESULT hr;
+  ComPtr<ID3DBlob> errors;
+  *oCodeBlob = NULL;
+  hr = D3DCompile(
+    code,
+    size,
+    NULL,
+    NULL,
+    NULL,
+    entry,
+    target,
+    shaderFlags,
+    0,
+    oCodeBlob,
+    &errors);  
+#ifdef D3DU_DEBUG
+  if(FAILED(hr))    
+  {
+    if(errors)
+      OutputDebugStringA((LPCSTR)errors->GetBufferPointer());
+    else
+      OutputDebugStringA("Shader compilation failed.");
+  }
+#endif
+  return hr;
+}
+
+D3DU_EXTERN HRESULT D3DU_API D3DUCompileFromResource(
+  HMODULE module,  
+  LPCWSTR resourceName,
+  LPCWSTR resourceType,
+  LPCSTR entry,  
+  LPCSTR target,
+  DWORD shaderFlags,
+  ID3DBlob **oCodeBlob)
+{
+  if(!oCodeBlob)
+    return E_POINTER;
+  HRESULT hr;
+  ComPtr<ID3DBlob> errors;
+  HGLOBAL res;
+  HRSRC hres;
+  LPVOID data;
+  SIZE_T size;
+  *oCodeBlob = NULL;
+  hres = FindResource(module, resourceName, resourceType);
+  if(!hres)
+    return HRESULT_FROM_WIN32(GetLastError());  
+  size = SizeofResource(module, hres);
+  res = LoadResource(module, hres);
+  if(!res)
+    return HRESULT_FROM_WIN32(GetLastError());
+  data = LockResource(res);
+  hr = D3DCompile(
+    data,
+    size,
+    NULL,
+    NULL,
+    NULL,
+    entry,
+    target,
+    shaderFlags,
+    0,
+    oCodeBlob,
+    &errors);  
+#ifdef D3DU_DEBUG
+  if(FAILED(hr))    
+  {
+    if(errors)
+      OutputDebugStringA((LPCSTR)errors->GetBufferPointer());
+    else
+      OutputDebugStringA("Shader compilation failed.");
+  }
+#endif
+  FreeResource(res);
+  return hr;
+}
+
+D3DU_EXTERN HRESULT D3DU_API D3DUCompileFromFile(
+  LPCWSTR filename,
+  LPCSTR entry,  
+  LPCSTR target,
+  DWORD shaderFlags,
+  ID3DBlob **oCodeBlob)
+{
+  if(!oCodeBlob)
+    return E_POINTER;
+  HRESULT hr;
+  ComPtr<ID3DBlob> errors;
+  LPVOID data;
+  SIZE_T size;
+  HANDLE file;
+  LARGE_INTEGER fsize;
+  HANDLE mapping;
+  *oCodeBlob = NULL;
+  file = CreateFile(
+    filename,
+    GENERIC_READ,
+    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+    NULL,
+    OPEN_EXISTING,
+    0,
+    NULL);
+  if(INVALID_HANDLE_VALUE == file)
+    return HRESULT_FROM_WIN32(GetLastError());
+  if(!GetFileSizeEx(file, &fsize))
+  {
+    CloseHandle(file);
+    return HRESULT_FROM_WIN32(GetLastError());
+  }
+#ifndef _AMD64_
+  if(fsize.QuadPart > 0xFFFFFFFF)
+  {
+    CloseHandle(file);
+    return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+  }
+#endif
+  size = (SIZE_T)fsize.QuadPart;
+  mapping = CreateFileMapping(
+    file,
+    NULL,
+    PAGE_READONLY,
+    fsize.HighPart,
+    fsize.LowPart,
+    NULL);
+  if(!mapping)
+  {
+    CloseHandle(file);
+    return HRESULT_FROM_WIN32(GetLastError());
+  }
+  data = MapViewOfFile(
+    mapping,
+    FILE_MAP_READ,
+    0,
+    0,
+    0);
+  if(!data)
+  {
+    CloseHandle(mapping);
+    CloseHandle(file);
+    return HRESULT_FROM_WIN32(GetLastError());
+  }  
+  hr = D3DCompile(
+    data,
+    size,
+    NULL,
+    NULL,
+    NULL,
+    entry,
+    target,
+    shaderFlags,
+    0,
+    oCodeBlob,
+    &errors);  
+#ifdef D3DU_DEBUG
+  if(FAILED(hr))    
+  {
+    if(errors)
+      OutputDebugStringA((LPCSTR)errors->GetBufferPointer());
+    else
+      OutputDebugStringA("Shader compilation failed.");
+  }
+#endif
+  UnmapViewOfFile(data);
+  CloseHandle(mapping);
+  CloseHandle(file);
+  return hr;
 }
