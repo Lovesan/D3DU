@@ -228,7 +228,7 @@ public:
     if(FAILED(hr)) return;
     _colorAnimation->Start();
 
-    hr = D3DUCreateFloatAnimation(0, 360, 3, TRUE, FALSE, &_cubeAnimation);
+    hr = D3DUCreateFloatAnimation(0, XM_2PI, 10, TRUE, FALSE, &_cubeAnimation);
     if(FAILED(hr)) return;
     _cubeAnimation->Start();
 

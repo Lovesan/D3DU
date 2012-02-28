@@ -41,6 +41,7 @@ public:
     _begin = 0;
     _current = 0;
     _end = 0;
+    _range = 0;
     _interval = 0;
     QueryPerformanceFrequency(&_freq);
   }
@@ -91,7 +92,8 @@ public:
     QueryPerformanceCounter(&tmpCounter);
     FLOAT dt = (tmpCounter.QuadPart - _counter.QuadPart)
                / (FLOAT)_freq.QuadPart
-               / _interval;
+               / _interval
+               * _range;
     _counter = tmpCounter;
     if(_back)
     {
@@ -140,6 +142,7 @@ public:
     _end = end;
     _back = begin > end;
     _current = _back ? end : begin;
+    _range = abs(end - begin);
     return S_OK;
   }
 
@@ -192,6 +195,7 @@ private:
   BOOL _back;
   FLOAT _begin;
   FLOAT _end;
+  FLOAT _range;
   FLOAT _current;
   FLOAT _interval;
   LARGE_INTEGER _freq;
